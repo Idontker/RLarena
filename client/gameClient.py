@@ -3,7 +3,7 @@ import time
 from strategy import Strategy
 
 URL = "http://127.0.0.1:8081"
-SLEEP_TIME = 0.01
+SLEEP_TIME = 0.001
 
 
 class Client():
@@ -110,7 +110,7 @@ class Client():
         return False
 
     def performAction(self, gameId, action):
-        time.sleep(0.05)
+        time.sleep(SLEEP_TIME)
 
         resp = requests.post(
             URL + "/game/{}/action?token={}".format(gameId, self.token), json=action)
@@ -121,13 +121,18 @@ class Client():
               resp.status_code, resp.text)
         return False
 
-    def lookForGame(self,):
-        time.sleep(0.05)
+    def lookForGame(self, gameCount=1):
+        time.sleep(SLEEP_TIME)
 
-        resp = requests.get(URL + "/match/queueup/{}".format(self.token))
+        resp = requests.get(
+            URL + "/match/queueup/{}?gameCount={}".format(self.token, gameCount))
         if resp.status_code == 200:
             return resp.text
 
         print("Error during 'GET /match/queueup/{}:".format(self.token),
               resp.status_code, resp.text)
         return None
+
+    def play(self, maxTime=-1, games: int = 10):
+        # TODO: implement
+        pass

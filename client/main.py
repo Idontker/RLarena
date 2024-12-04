@@ -6,7 +6,7 @@ from strategy import *
 from gameClient import Client
 
 TICKS = 500
-GAMES = 200  # per matching
+GAMES = 5  # per matching
 
 DEBUG = False
 
@@ -48,9 +48,9 @@ if __name__ == "__main__":
             c1 = clients[i]
             c2 = clients[j]
 
-            for _ in range(GAMES):
-                out1 = c1.lookForGame()
-                out2 = c2.lookForGame()
+            # for _ in range(GAMES):
+            out1 = c1.lookForGame(gameCount=GAMES)
+            out2 = c2.lookForGame(gameCount=GAMES)
             print(GAMES, "games found for", c1.username, c2.username)
 
     ags = [client.getActiveGames() for client in clients]

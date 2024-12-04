@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"sync"
 )
 
@@ -14,7 +15,7 @@ type LFGameStruct struct {
 }
 
 var (
-	LookingForMatch = make([]Player, 0)
+	LookingForMatch = make([]LFGameStruct, 0)
 	mutexLfMatch    sync.Mutex
 )
 
@@ -48,38 +49,79 @@ func serveLookingForMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gameCountStr := r.URL.Query().Get("gameCount")
+
+	if gameCountStr == "" {
+		http.Error(w, "Missing gameCount", http.StatusBadRequest)
+		return
+	}
+	gameCount, err := strconv.Atoi(gameCountStr)
+	if err != nil {
+		http.Error(w, "Invalid gameCount (should be an integer)", http.StatusBadRequest)
+		return
+	}
+
 	mutexLfMatch.Lock()
 
 	if len(LookingForMatch) > 0 {
-		opponent := LookingForMatch[0]
-		if opponent.ID == player.ID {
+		lfGame := LookingForMatch[0]
+		opponent := *lfGame.Player
 
+		if opponent.ID == player.ID {
 			slog.Debug("STILL looking for match", "player", player.ID)
 			fmt.Fprintf(w, "Still looking for match")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		// Remove opponent from LookingForMatch
-		LookingForMatch = make([]Player, 0)
+		var createNgames int
+		if lfGame.LfGameCount < gameCount {
+			// store the number of games to create
+			createNgames = lfGame.LfGameCount
+
+			LookingForMatch = make([]LFGameStruct, 1)
+
+			newLfGame := LFGameStruct{
+				Player:      &player,
+				LfGameCount: gameCount - lfGame.LfGameCount,
+			}
+			LookingForMatch = append(LookingForMatch, newLfGame)
+		} else {
+			// store the number of games to create
+			createNgames = gameCount
+			LookingForMatch[0] = LFGameStruct{
+				Player:      LookingForMatch[0].Player,
+				LfGameCount: LookingForMatch[0].LfGameCount - gameCount,
+			}
+		}
+
+		// Remove opponent from LookingForMatch if he is satisfied with the number of games
+		if lfGame.LfGameCount == gameCount {
+			LookingForMatch = make([]LFGameStruct, 0)
+		}
 		mutexLfMatch.Unlock()
 
-		// Create a new game
-		game := createGame(player, opponent)
-
-		// Add game to the list of active games (assuming you have a list of active games)
+		// Add game to the list of active games
 		MutexActiveGames.Lock()
-
-		ActiveGames = append(ActiveGames, game)
+		// Create a new games
+		for i := 0; i < createNgames; i++ {
+			game := createGame(player, opponent)
+			ActiveGames = append(ActiveGames, game)
+		}
 		MutexActiveGames.Unlock()
 
 		w.WriteHeader(http.StatusOK)
-		slog.Debug("Match found!", "playerOne", player.ID, "playerTwo", opponent.ID)
-		fmt.Fprintf(w, "Match found! Player %d vs Player %d", player.ID, opponent.ID)
+		slog.Debug("Match found!", "playerOne", player.ID, "playerTwo", opponent.ID, "gameCount", gameCount)
+		fmt.Fprintf(w, "Match found! Player %d vs Player %d (in total %d games)", player.ID, opponent.ID, createNgames)
 	} else {
-		LookingForMatch = append(LookingForMatch, player)
+		newLfGame := LFGameStruct{
+			Player:      &player,
+			LfGameCount: gameCount,
+		}
+
+		LookingForMatch = append(LookingForMatch, newLfGame)
 		mutexLfMatch.Unlock()
-		slog.Debug("Looing for match", "player", player.ID)
+		slog.Debug("Looing for match", "player", player.ID, "gameCount", gameCount)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Looking for match")
 	}
