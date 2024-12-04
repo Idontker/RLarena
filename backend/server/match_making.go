@@ -8,6 +8,11 @@ import (
 	"sync"
 )
 
+type LFGameStruct struct {
+	Player      *Player
+	LfGameCount int
+}
+
 var (
 	LookingForMatch = make([]Player, 0)
 	mutexLfMatch    sync.Mutex

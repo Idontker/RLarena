@@ -139,9 +139,9 @@ func applyAction(player Player, gameId int, action Turn) (bool, string) {
 		_, e1, e2 := UpdateElo(game.Player1ID, game.Player2ID, game.Outcome)
 		// assert.True(success, "Elo should be updated")
 
-		player1, _ := players[game.Player1ID]
+		player1 := players[game.Player1ID]
 		// assert.True(ok1, "Player 1 id of a game should lead to a player")
-		player2, _ := players[game.Player2ID]
+		player2 := players[game.Player2ID]
 		// assert.True(ok2, "Player 1 id of a game should lead to a player")
 
 		mutex_p1 := getPlayerMutex(game.Player1ID)
@@ -245,22 +245,6 @@ func servePerformAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 	}
 
-	game, ok := games[id]
-	if !ok {
-		http.Error(w, "Game not found", http.StatusNotFound)
-		return
-	}
-
-	game.mutex.Lock()
-	defer game.mutex.Unlock()
-
-	// user authorization
-	if (game.GameState.NextPlayer() == 1 && game.Player1ID != player.ID) ||
-		(game.GameState.NextPlayer() == 2 && game.Player2ID != player.ID) {
-		http.Error(w, "Not your turn", http.StatusUnauthorized)
-		return
-	}
-
 	var action Turn
 	err = json.NewDecoder(r.Body).Decode(&action)
 	if err != nil {
@@ -268,68 +252,12 @@ func servePerformAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid := game.GameState.applyAction(action)
-	if !valid {
-		http.Error(w, "Invalid action (Against the rules)", http.StatusBadRequest)
+	success, msg := applyAction(player, id, action)
+	if !success {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
 	}
-
-	// update game outcome
-	if game.GameState.IsEnd() {
-		game.Outcome = game.GameState.GetWinner()
-
-		// TODO: there is a minor race condition here, as the elo update is not synchronized
-		// with the game history update. Therefore, the game history might be not in the
-		// correct order, when comparing it with the elo gains/losses.
-		// But, the elo calculations are correct.
-		// Therefore, this is not a big issue and will be ignored for now
-		_, e1, e2 := UpdateElo(game.Player1ID, game.Player2ID, game.Outcome)
-		// assert.True(success, "Elo should be updated")
-
-		player1, _ := players[game.Player1ID]
-		// assert.True(ok1, "Player 1 id of a game should lead to a player")
-		player2, _ := players[game.Player2ID]
-		// assert.True(ok2, "Player 1 id of a game should lead to a player")
-
-		mutex_p1 := getPlayerMutex(game.Player1ID)
-		mutex_p2 := getPlayerMutex(game.Player2ID)
-
-		mutex_p1.Lock()
-		player1.GameHistory = append(player1.GameHistory, HistoryEntry{
-			GameID: game.ID,
-			Win:    game.Outcome == 1,
-			Draw:   game.Outcome == -1,
-			Loss:   game.Outcome == 2,
-			Elo:    e1,
-		})
-		players[game.Player1ID] = player1
-		mutex_p1.Unlock()
-
-		mutex_p2.Lock()
-		player2.GameHistory = append(player2.GameHistory, HistoryEntry{
-			GameID: game.ID,
-			Win:    game.Outcome == 2,
-			Draw:   game.Outcome == -1,
-			Loss:   game.Outcome == 1,
-			Elo:    e2,
-		})
-		players[game.Player2ID] = player2
-		mutex_p2.Unlock()
-
-		// remove game from active games
-		MutexActiveGames.Lock()
-		for i, g := range ActiveGames {
-			if g.ID == id {
-				ActiveGames = append(ActiveGames[:i], ActiveGames[i+1:]...)
-				break
-			}
-		}
-		MutexActiveGames.Unlock()
-	}
-
-	// save the history and outcome
-	mutexGames.Lock()
-	games[id] = game
-	mutexGames.Unlock()
+	w.WriteHeader(http.StatusCreated)
 }
 
 func serveActiveGames(w http.ResponseWriter, _ *http.Request) {

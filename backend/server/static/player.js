@@ -21,7 +21,13 @@ const renderTable = (player) => {
 
             const row = `
                 <tr>
-                    <td>${game.id}</td>
+                    <td>
+                        <a href="/?id=${game.id}">
+                            <span class="info-icon" title="More info about game ${game.id}">ℹ️</span>
+                            ${game.id}
+                        </a>
+                     </td>
+                    </td>
                     <td>${result}</td>
                     <td>${eloDiffSign}${eloDiff}</td>
                     <td>${game.elo}</td>
