@@ -1,7 +1,3 @@
-module main
+module github.com/IdontKer/RLarena
 
-go 1.23.0
-
-
-require example/server v1.0.2
-replace example/server => ./server
+go 1.23.4

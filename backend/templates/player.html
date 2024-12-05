@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Player Details</title>
+        <link rel="stylesheet" href="/static/player.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h1>Player Details</h1>
+            <div id="player-info">
+                <h2 id="player-name">Loading...</h2>
+                <p id="player-elo">Current ELO: Loading...</p>
+            </div>
+            <table id="gameHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Game ID</th>
+                        <th>Result</th>
+                        <th>ELO Difference</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <script src="/static/player.js"></script>
+    </body>
+</html>
