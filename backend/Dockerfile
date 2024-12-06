@@ -54,7 +54,7 @@ COPY static /static
 COPY templates /templates
 COPY --from=build-stage /backend /backend
 
-EXPOSE 8080
+EXPOSE 8081
 
 USER nonroot:nonroot
 
