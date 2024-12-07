@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -22,5 +24,6 @@ func main() {
 	// Start server
 	log.Println("Server is starting...")
 	log.Println("http://localhost:8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Println(http.ListenAndServe(":8081", nil))
+
 }

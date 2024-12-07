@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,26 +18,24 @@ var (
 	mutexLfMatch    sync.Mutex
 )
 
-func serveOpenMatchesByPlayer(w http.ResponseWriter, r *http.Request) {
-	token := r.PathValue("token")
+// func serveOpenMatchesByPlayer(w http.ResponseWriter, r *http.Request) {
+// 	token := r.PathValue("token")
 
-	player, err := GetPlayerByToken(token)
-	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
+// 	player, err := GetPlayerByToken(token)
+// 	if err != nil {
+// 		http.Error(w, "Invalid token", http.StatusUnauthorized)
+// 		return
+// 	}
 
-	MutexActiveGames.Lock()
-	defer MutexActiveGames.Unlock()
-	myGamesIds := make([]int, 0)
-	for _, game := range ActiveGames {
-		if game.Player1ID == player.ID || game.Player2ID == player.ID {
-			myGamesIds = append(myGamesIds, game.ID)
-		}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(myGamesIds)
-}
+// 	myGamesIds := make([]int, 0)
+// 	for _, game := range ActiveGames {
+// 		if game.Player1ID == player.ID || game.Player2ID == player.ID {
+// 			myGamesIds = append(myGamesIds, game.ID)
+// 		}
+// 	}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(myGamesIds)
+// }
 
 func serveLookingForMatch(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
@@ -102,13 +99,12 @@ func serveLookingForMatch(w http.ResponseWriter, r *http.Request) {
 		mutexLfMatch.Unlock()
 
 		// Add game to the list of active games
-		MutexActiveGames.Lock()
 		// Create a new games
 		for i := 0; i < createNgames; i++ {
+			// TODO: create game with db and ignore/delete the ActiveGames slice
 			game := createGame(player, opponent)
 			ActiveGames = append(ActiveGames, game)
 		}
-		MutexActiveGames.Unlock()
 
 		w.WriteHeader(http.StatusOK)
 		slog.Debug("Match found!", "playerOne", player.ID, "playerTwo", opponent.ID, "gameCount", gameCount)
@@ -133,8 +129,8 @@ func InitHttpHandler_Match_Making() {
 		serveLookingForMatch(w, r)
 	})
 
-	http.HandleFunc("GET /match/my/{token}", func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r)
-		serveOpenMatchesByPlayer(w, r)
-	})
+	// http.HandleFunc("GET /match/my/{token}", func(w http.ResponseWriter, r *http.Request) {
+	// 	LogRequest(r)
+	// 	serveOpenMatchesByPlayer(w, r)
+	// })
 }

@@ -1,0 +1,65 @@
+-- +goose Up
+-- +goose StatementBegin
+SELECT 'up SQL query';
+
+-- HistoryEntry
+CREATE TABLE IF NOT EXISTS HistoryEntry (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    GameID INTEGER NOT NULL,
+    PlayerID INTEGER NOT NULL,
+    Win BOOLEAN NOT NULL,
+    Draw BOOLEAN NOT NULL,
+    Loss BOOLEAN NOT NULL,
+    Elo INTEGER NOT NULL,
+    FOREIGN KEY (GameID) REFERENCES Game(ID)
+    FOREIGN KEY (PlayerID) REFERENCES Player(ID)
+    CONSTRAINT UniqueGameEntry UNIQUE (GameID, PlayerID),
+);
+
+-- Player
+CREATE TABLE IF NOT EXISTS Player (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name VARCHAR(255) NOT NULL,
+    SecretToken VARCHAR(255) NOT NULL,
+    Elo INTEGER NOT NULL
+); 
+
+-- Game 
+CREATE TABLE IF NOT EXISTS Games (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Player1ID INTEGER NOT NULL,
+    Player2ID INTEGER NOT NULL
+    CONSTRAINT Player1IDNotEqualPlayer2ID CHECK (Player1ID != Player2ID),
+    Outcome INTEGER NOT NULL
+    CONSTRAINT OutcomeCheck CHECK (Outcome IN (-1, 0, 1, 2)),
+    Rows INTEGER NOT NULL,
+    Cols INTEGER NOT NULL,
+    FOREIGN KEY (Player1ID) REFERENCES Player(ID),
+    FOREIGN KEY (Player2ID) REFERENCES Player(ID),
+    FOREIGN KEY (GameStateID) REFERENCES GameState(ID)
+);
+
+-- Turn History
+CREATE TABLE IF NOT EXISTS Turns (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    TurnID INTEGER NOT NULL,
+    GameID INTEGER NOT NULL,    
+    DestRow INTEGER NOT NULL,
+    DestCol INTEGER NOT NULL,
+    SourceRow INTEGER NOT NULL,
+    SourceCol INTEGER NOT NULL,
+    PlayerNum INTEGER NOT NULL
+    CONSTRAINT PlayerNumCheck CHECK (PlayerNum IN (1, 2)),
+    CONSTRAINT UniqueGameTurn UNIQUE (GameID, TurnID),
+    FOREIGN KEY (GameID) REFERENCES Game(ID)
+);
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP TABLE IF EXISTS HistoryEntry;
+DROP TABLE IF EXISTS Player;
+DROP TABLE IF EXISTS Game;
+DROP TABLE IF EXISTS GameState;
+DROP TABLE IF EXISTS Turn;
+-- +goose StatementEnd

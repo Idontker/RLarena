@@ -36,8 +36,10 @@ type Player struct {
 
 // }
 
+// TODO: remove --> DB
 var playerMutexes = make(map[int]*sync.Mutex)
 
+// TODO: remove --> DB
 func getPlayerMutex(playerID int) *sync.Mutex {
 	if _, exists := playerMutexes[playerID]; !exists {
 		playerMutexes[playerID] = &sync.Mutex{}
@@ -45,6 +47,7 @@ func getPlayerMutex(playerID int) *sync.Mutex {
 	return playerMutexes[playerID]
 }
 
+// TODO: remove --> DB
 var (
 	players          = make(map[int]Player)
 	playerTokensToID = make(map[string]int)
@@ -53,6 +56,7 @@ var (
 	nextPlayerID     = 1
 )
 
+// TODO: remove --> DB
 func GetPlayerByToken(token string) (Player, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -66,6 +70,7 @@ func GetPlayerByToken(token string) (Player, error) {
 	return player, nil
 }
 
+// TODO: remove --> DB
 func generateToken() string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -76,31 +81,9 @@ func generateToken() string {
 	return string(b)
 }
 
-func UpdateElo(playerOneId int, playerTwoId int, outcome int) (bool, int, int) {
-	playerOneMutex := getPlayerMutex(playerOneId)
-	playerTwoMutex := getPlayerMutex(playerTwoId)
-
-	playerOneMutex.Lock()
-	defer playerOneMutex.Unlock()
-
-	playerTwoMutex.Lock()
-	defer playerTwoMutex.Unlock()
-
-	playerOne, playerOneExists := players[playerOneId]
-	playerTwo, playerTwoExists := players[playerTwoId]
-
-	if !playerOneExists || !playerTwoExists {
-		if !playerOneExists {
-			fmt.Println("[ERROR]: playerOne not found. Id:", playerOneId)
-		}
-		if !playerTwoExists {
-			fmt.Println("[ERROR]: playerTwo not found. Id:", playerTwoId)
-		}
-		return false, 0, 0
-	}
-
-	e1 := 1 / (1. + math.Pow(10, (float64(playerTwo.CurrentElo)-float64(playerOne.CurrentElo))/400))
-	e2 := 1 / (1. + math.Pow(10, (float64(playerOne.CurrentElo)-float64(playerTwo.CurrentElo))/400))
+func CalculateEloUpdate(current_elo1 int, current_elo2 int, outcome int) (bool, int, int) {
+	e1 := 1 / (1. + math.Pow(10, (float64(current_elo2)-float64(current_elo1))/400))
+	e2 := 1 / (1. + math.Pow(10, (float64(current_elo1)-float64(current_elo2))/400))
 
 	var s1, s2 float64
 	if outcome == 1 {
@@ -110,27 +93,28 @@ func UpdateElo(playerOneId int, playerTwoId int, outcome int) (bool, int, int) {
 	} else if outcome == 2 {
 		s1, s2 = 0, 1
 	} else {
-		fmt.Println("[ERROR]: this outcome is impossible. Match between", playerOneId, playerTwoId)
+		fmt.Println("[ERROR]: this outcome is impossible.")
 		return false, 0, 0
 	}
 
-	playerOne.CurrentElo = playerOne.CurrentElo + int(float64(K)*(s1-float64(e1)))
-	playerTwo.CurrentElo = playerTwo.CurrentElo + int(float64(K)*(s2-float64(e2)))
+	new_elo1 := current_elo1 + int(float64(K)*(s1-float64(e1)))
+	new_elo2 := current_elo2 + int(float64(K)*(s2-float64(e2)))
 
-	players[playerOneId] = playerOne
-	players[playerTwoId] = playerTwo
-
-	return true, playerOne.CurrentElo, playerTwo.CurrentElo
+	return true, new_elo1, new_elo2
 }
 
 func serveDisplayPlayers(w http.ResponseWriter, _ *http.Request) {
+
+	// TODO: use --> DB
 	mutex.Lock()
 
 	var playerList []Player
+	// TODO: use --> DB
 	for _, player := range players {
 		playerList = append(playerList, player)
 	}
 
+	// TODO: use --> DB
 	mutex.Unlock()
 
 	json.NewEncoder(w).Encode(playerList)
@@ -143,9 +127,11 @@ func serveSignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: remove --> DB
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	// TODO: remove --> DB
 	if _, exists := playerNames[name]; exists {
 		http.Error(w, "Name already taken", http.StatusBadRequest)
 		return
@@ -160,6 +146,7 @@ func serveSignUp(w http.ResponseWriter, r *http.Request) {
 		SecretToken: token,
 	}
 
+	// TODO: remove --> DB
 	players[nextPlayerID] = player
 	playerTokensToID[token] = nextPlayerID
 	playerNames[name] = true
@@ -175,6 +162,8 @@ func serveGetPlayerByToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Token is required", http.StatusBadRequest)
 		return
 	}
+
+	// TODO: use --> DB
 	player, err := GetPlayerByToken(token)
 	if err != nil {
 		http.Error(w, "Player not found", http.StatusUnauthorized)

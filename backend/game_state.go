@@ -6,6 +6,7 @@ import (
 )
 
 type Turn struct {
+	TurnID    int `json:"turnID"`
 	DestRow   int `json:"destRow"`
 	DestCol   int `json:"destCol"`
 	SourceRow int `json:"sourceRow"`
