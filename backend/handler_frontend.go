@@ -1,17 +1,10 @@
 package main
 
 import (
-	"html/template"
 	"log/slog"
 	"net/http"
 	"path/filepath"
 )
-
-// Serves the HTML page
-func ServeIndex(w http.ResponseWriter, _ *http.Request) {
-	tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	tmpl.Execute(w, nil)
-}
 
 // Serve static files with correct MIME types
 func ServeStatic(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +37,12 @@ func InitHttpHandler_Frontend_Handler() {
 
 	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r)
-		ServeIndex(w, r)
+		http.Redirect(w, r, "/leaderboard", http.StatusSeeOther)
+	})
+
+	http.HandleFunc("GET /game", func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r)
+		http.ServeFile(w, r, "./templates/game.html")
 	})
 
 	http.HandleFunc("GET /leaderboard", func(w http.ResponseWriter, r *http.Request) {

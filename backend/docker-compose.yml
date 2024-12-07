@@ -7,5 +7,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
+    environment:
+      - DB_PATH=/app-data/app.db
     volumes:
-      - .:/app
+      - app-data:/app-data
+    command: >
+      sh -c "goose -dir=migrations sqlite3 /app-data/app.db up &&
+             /backend"
+
+volumes:
+  app-data:

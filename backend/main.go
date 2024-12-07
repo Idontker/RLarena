@@ -4,13 +4,19 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/joho/godotenv"
+
 	// _ "github.com/mattn/go-sqlite3"
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
 func main() {
-	// server.StartServer()
+	// Load environment variables from .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println("Warning: Could not load .env file, using system environment variables")
+	}
 
 	// paths: /game
 	InitHttpHandler_Game_Handler()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -38,7 +39,14 @@ type DB_Player struct {
 var db *sql.DB
 
 func Db_open() (*sql.DB, error) {
-	return sql.Open("sqlite3", "./app.db")
+	// Get the database path from the environment variable
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		return nil, fmt.Errorf("DB_PATH environment variable is not set")
+	}
+
+	// Open the SQLite database using the path from the environment
+	return sql.Open("sqlite3", dbPath)
 }
 
 // ------------------------------
@@ -170,6 +178,42 @@ func DB_Get_Game(id int) (*Game, error) {
 	}
 
 	return game, nil
+}
+func DB_Get_Games(startIdx int, endIdx int) ([]Game, error) {
+	db, err := Db_open()
+	if err != nil {
+		slog.Error("Error opening database during games lookup (all)", "error", err)
+		return nil, err
+	}
+	defer db.Close()
+
+	// load game data
+	rows, err := db.Query("SELECT * FROM Game WHERE ID >= ? AND ID <", startIdx, endIdx)
+	if err != nil {
+		slog.Error("Error querying game by id", "startIdx", startIdx, "endIdx", endIdx, "error", err)
+		return nil, err
+	}
+
+	games := make([]Game, 0)
+	for rows.Next() {
+		db_game := DB_Game{}
+		err = rows.Scan(&db_game.ID, &db_game.Player1ID, &db_game.Player2ID, &db_game.Outcome, &db_game.Rows, &db_game.Cols)
+		if err != nil {
+			slog.Error("Error during reading games (get games query)", "error", err)
+			return nil, err
+		}
+
+		game, err := reconstruct_game(db, db_game)
+
+		if err != nil {
+			slog.Error("Error during reconstruction of game", "id", db_game.ID, "error", err)
+			return nil, err
+		}
+
+		games = append(games, *game)
+	}
+
+	return games, nil
 }
 
 func DB_apply_action(action Turn, game *Game) error {

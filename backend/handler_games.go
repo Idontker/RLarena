@@ -9,9 +9,7 @@ import (
 	"strconv"
 )
 
-// var (
-// 	ActiveGames []Game
-// )
+var PAGE_SIZE = 10
 
 type Game struct {
 	ID        int        `json:"id"`
@@ -54,6 +52,29 @@ func createGame(p1 Player, p2 Player) (*Game, error) {
 	}
 
 	return game, err
+}
+
+func serveGames(w http.ResponseWriter, r *http.Request) {
+	pageStr := r.URL.Query().Get("page")
+	if pageStr == "" {
+		pageStr = "1"
+	}
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		http.Error(w, "Invalid page number", http.StatusBadRequest)
+		return
+	}
+
+	startIdx := (page - 1) * PAGE_SIZE
+	endIdx := page * PAGE_SIZE
+
+	games, err := DB_Get_Games(startIdx, endIdx)
+	if err != nil {
+		slog.Error("Error getting game state", "page", page, "error", err)
+		http.Error(w, "Game not found", http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(games)
 }
 
 func serveGameState(w http.ResponseWriter, r *http.Request) {
@@ -256,6 +277,11 @@ func serveActiveGamesUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func InitHttpHandler_Game_Handler() {
+
+	http.HandleFunc("GET /games", func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r)
+		serveGameState(w, r)
+	})
 
 	http.HandleFunc("GET /game/{id}/state", func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r)
