@@ -2,15 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math/rand"
 	"net/http"
 	"strconv"
 )
 
-var (
-	ActiveGames []Game
-)
+// var (
+// 	ActiveGames []Game
+// )
 
 type Game struct {
 	ID        int        `json:"id"`
@@ -20,7 +21,7 @@ type Game struct {
 	GameState *GameState `json:"game_state"` // Additional field to store the state of the game
 }
 
-func createGame(p1 Player, p2 Player) Game {
+func createGame(p1 Player, p2 Player) (*Game, error) {
 	var rows, cols int
 	switch rand.Intn(4) {
 	case 0:
@@ -44,15 +45,15 @@ func createGame(p1 Player, p2 Player) Game {
 	id, err := DB_Create_Game(id1, id2, rows, cols)
 	if err != nil {
 		slog.Error("Error creating game", "error", err)
-		return Game{}
+		return nil, err
 	}
 	game, err := DB_Get_Game(id)
 	if err != nil {
 		slog.Error("Error creating game", "id", id, "error", err)
-		return Game{}
+		return nil, err
 	}
 
-	return *game
+	return game, err
 }
 
 func serveGameState(w http.ResponseWriter, r *http.Request) {
@@ -134,10 +135,10 @@ func servePerformActionBulk(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get player
-	// TODO: CHECK AUTH USING DB
-	player, err := GetPlayerByToken(token)
+	player, err := DB_Get_Player_by_Token(token)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		msg := fmt.Sprint("Invalid token (%s)", err.Error())
+		http.Error(w, msg, http.StatusUnauthorized)
 	}
 
 	var actions []struct {
@@ -154,7 +155,7 @@ func servePerformActionBulk(w http.ResponseWriter, r *http.Request) {
 	msgs := make(map[int]string, 0)
 
 	for _, a := range actions {
-		success, msg := applyAction(player, a.GameID, a.Action)
+		success, msg := applyAction(*player, a.GameID, a.Action)
 		if !success {
 			msgs[a.GameID] = msg
 		}
@@ -178,10 +179,10 @@ func servePerformAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get player
-	// TODO: CHECK AUTH USING DB
-	player, err := GetPlayerByToken(token)
+	player, err := DB_Get_Player_by_Token(token)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		msg := fmt.Sprint("Invalid token (%s)", err.Error())
+		http.Error(w, msg, http.StatusUnauthorized)
 	}
 
 	var action Turn
@@ -191,7 +192,7 @@ func servePerformAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	success, msg := applyAction(player, id, action)
+	success, msg := applyAction(*player, id, action)
 	if !success {
 		http.Error(w, msg, http.StatusBadRequest)
 		return
@@ -203,8 +204,11 @@ func serveActiveGames(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	// TODO: read ActiveGames from DB
-	json.NewEncoder(w).Encode(ActiveGames)
+	activeGames, err := DB_Get_Active_Games()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	json.NewEncoder(w).Encode(activeGames)
 }
 
 func serveActiveGamesUser(w http.ResponseWriter, r *http.Request) {
@@ -215,19 +219,24 @@ func serveActiveGamesUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get player
-	player, err := GetPlayerByToken(token)
+	player, err := DB_Get_Player_by_Token(token)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		msg := fmt.Sprint("Invalid token (%s)", err.Error())
+		http.Error(w, msg, http.StatusUnauthorized)
 	}
 
 	myturn := make([]Game, 0)
 	awating := make([]Game, 0)
 
-	// TODO: read ActiveGames from DB
-	for _, game := range ActiveGames {
+	activeGames, err := DB_Get_Active_Games_By_Player(player)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	for _, game := range activeGames {
 		if (game.Player1ID == player.ID && game.GameState.NextPlayer() == 1) || (game.Player2ID == player.ID && game.GameState.NextPlayer() == 2) {
 			myturn = append(myturn, game)
-		} else if game.Player1ID == player.ID || game.Player2ID == player.ID {
+		} else {
 			awating = append(awating, game)
 		}
 	}

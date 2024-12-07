@@ -3,6 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"math/rand"
+	"time"
 )
 
 type DB_Game struct {
@@ -38,11 +41,16 @@ func Db_open() (*sql.DB, error) {
 	return sql.Open("sqlite3", "./app.db")
 }
 
+// ------------------------------
+// Game Functions
+// ------------------------------
+
 func DB_Create_Game(player1_id int, player2_id int, rows int, cols int) (int, error) {
 	db, err := Db_open()
 	if err != nil {
 		return -1, err
 	}
+	defer db.Close()
 
 	row := db.QueryRow("INSERT INTO Games (Player1ID, Player2ID, Outcome, Rows, Cols) VALUES (?, ?, ?, ?)",
 		player1_id,
@@ -56,34 +64,18 @@ func DB_Create_Game(player1_id int, player2_id int, rows int, cols int) (int, er
 		return -1, err
 	}
 
-	db.Close()
 	return id, nil
 }
 
-func DB_Get_Game(id int) (*Game, error) {
-	db, err := Db_open()
-	if err != nil {
-		return nil, err
-	}
-
-	// load game data
-	row := db.QueryRow("SELECT * FROM Games WHERE ID = ?", id)
-	db_game := DB_Game{}
-	err = row.Scan(&db_game.ID, &db_game.Player1ID, &db_game.Player2ID, &db_game.Outcome, &db_game.Rows, &db_game.Cols)
-	if err != nil {
-		return nil, err
-	}
-
+func reconstruct_game(db *sql.DB, db_game DB_Game) (*Game, error) {
 	rows := db_game.Rows
 	cols := db_game.Cols
 
 	// load turns
-	turnResults, err := db.Query("SELECT * FROM Turns WHERE ID = ?", id)
+	turnResults, err := db.Query("SELECT * FROM Turns WHERE ID = ?", db_game.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	db.Close()
 
 	history := []Turn{}
 	for turnResults.Next() {
@@ -139,15 +131,34 @@ func DB_Get_Game(id int) (*Game, error) {
 	}
 
 	return &game, nil
+}
+
+func DB_Get_Game(id int) (*Game, error) {
+	db, err := Db_open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	// load game data
+	row := db.QueryRow("SELECT * FROM Games WHERE ID = ?", id)
+	db_game := DB_Game{}
+	err = row.Scan(&db_game.ID, &db_game.Player1ID, &db_game.Player2ID, &db_game.Outcome, &db_game.Rows, &db_game.Cols)
+	if err != nil {
+		return nil, err
+	}
+
+	game, err := reconstruct_game(db, db_game)
+	return game, nil
 
 }
 
 func DB_apply_action(action Turn, game *Game) error {
 	db, err := Db_open()
-	defer db.Close()
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	transaction, err := db.Begin()
 	if err != nil {
@@ -173,12 +184,231 @@ func DB_apply_action(action Turn, game *Game) error {
 	return nil
 }
 
-func DB_update_Elo_and_History(playerOneID int, playerTwoID int, outcome int, hist1 *HistoryEntry, hist2 *HistoryEntry) error {
+func DB_Get_Active_Games() ([]Game, error) {
+	db, err := Db_open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM Games WHERE Outcome = 0")
+	if err != nil {
+		return nil, err
+	}
+
+	db_games := make([]DB_Game, 0)
+	for rows.Next() {
+		db_game := DB_Game{}
+		err = rows.Scan(&db_game.ID, &db_game.Player1ID, &db_game.Player2ID, &db_game.Outcome, &db_game.Rows, &db_game.Cols)
+		if err != nil {
+			return nil, err
+		}
+		db_games = append(db_games, db_game)
+
+	}
+
+	games := make([]Game, 0)
+	for _, db_game := range db_games {
+		game, err := reconstruct_game(db, db_game)
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, *game)
+	}
+	return games, nil
+}
+
+func DB_Get_Active_Games_By_Player(player *Player) ([]Game, error) {
+	db, err := Db_open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM Games WHERE Outcome = 0 AND (Player1ID = ? OR Player2ID = ?)", player.ID, player.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	db_games := make([]DB_Game, 0)
+	for rows.Next() {
+		db_game := DB_Game{}
+		err = rows.Scan(&db_game.ID, &db_game.Player1ID, &db_game.Player2ID, &db_game.Outcome, &db_game.Rows, &db_game.Cols)
+		if err != nil {
+			return nil, err
+		}
+		db_games = append(db_games, db_game)
+
+	}
+
+	games := make([]Game, 0)
+	for _, db_game := range db_games {
+		game, err := reconstruct_game(db, db_game)
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, *game)
+	}
+	return games, nil
+}
+
+// ------------------------------
+// Player Functions
+// ------------------------------
+
+func generateToken() string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 32)
+	for i := range b {
+		b[i] = letters[r.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+func DB_Create_Player(name string) (string, error) {
+	secretToken := generateToken()
+
 	db, err := Db_open()
 	defer db.Close()
 	if err != nil {
+		return "", err
+	}
+
+	row := db.QueryRow("INSERT INTO Players (Name, SecretToken, CurrentElo) VALUES (?, ?, ?)", name, secretToken, 1000)
+	var id int
+	err = row.Scan(&id)
+	if err != nil {
+		return "", err
+	}
+
+	return secretToken, nil
+}
+func reconstruct_history(db *sql.DB, playerID int) ([]HistoryEntry, error) {
+	history := []HistoryEntry{}
+	historyResults, err := db.Query("SELECT GameID, Win, Draw, Loss, Elo FROM History WHERE PlayerID = ?", playerID)
+	if err != nil {
+		return nil, err
+	}
+	for historyResults.Next() {
+		db_history := HistoryEntry{}
+		err = historyResults.Scan(&db_history.GameID, &db_history.Win, &db_history.Draw, &db_history.Loss, &db_history.Elo)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, db_history)
+	}
+	return history, nil
+}
+
+func DB_Get_Player(id int) (*Player, error) {
+	db, err := Db_open()
+	defer db.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	row := db.QueryRow("SELECT * FROM Players WHERE ID = ?", id)
+
+	db_player := DB_Player{}
+	err = row.Scan(&db_player.ID, &db_player.Name, &db_player.SecretToken, &db_player.CurrentElo)
+	if err != nil {
+		return nil, err
+	}
+
+	// reconstruct game history
+	history, err := reconstruct_history(db, db_player.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	player := Player{
+		ID:          db_player.ID,
+		Name:        db_player.Name,
+		SecretToken: db_player.SecretToken,
+		CurrentElo:  db_player.CurrentElo,
+		GameHistory: history,
+	}
+	return &player, nil
+}
+
+func DB_Get_Players() ([]Player, error) {
+	db, err := Db_open()
+	defer db.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query("SELECT * FROM Players")
+	if err != nil {
+		return nil, err
+	}
+
+	players := make([]Player, 0)
+	for rows.Next() {
+		player := Player{}
+		err = rows.Scan(&player.ID, &player.Name, &player.SecretToken, &player.CurrentElo)
+		if err != nil {
+			slog.Error("Error scanning player", "error", err)
+		}
+
+		// reconstruct game history
+		history, err := reconstruct_history(db, player.ID)
+		if err != nil {
+			slog.Error("Error reconstructing history", "error", err)
+		}
+		player.GameHistory = history
+		players = append(players, player)
+	}
+
+	return players, nil
+}
+
+func DB_Get_Player_by_Token(token string) (*Player, error) {
+	db, err := Db_open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	row := db.QueryRow("SELECT ID FROM Players WHERE SecretToken = ?", token)
+	db_player := DB_Player{}
+	err = row.Scan(&db_player.ID, &db_player.Name, &db_player.SecretToken, &db_player.CurrentElo)
+	if err != nil {
+		return nil, err
+	}
+
+	// reconstruct game history
+	history := []HistoryEntry{}
+	historyResults, err := db.Query("SELECT GameID, Win, Draw, Loss, Elo FROM History WHERE PlayerID = ?", db_player.ID)
+	if err != nil {
+		return nil, err
+	}
+	for historyResults.Next() {
+		db_history := HistoryEntry{}
+		err = historyResults.Scan(&db_history.GameID, &db_history.Win, &db_history.Draw, &db_history.Loss, &db_history.Elo)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, db_history)
+	}
+
+	player := Player{
+		ID:          db_player.ID,
+		Name:        db_player.Name,
+		SecretToken: db_player.SecretToken,
+		CurrentElo:  db_player.CurrentElo,
+		GameHistory: history,
+	}
+	return &player, nil
+}
+
+func DB_update_Elo_and_History(playerOneID int, playerTwoID int, outcome int, hist1 *HistoryEntry, hist2 *HistoryEntry) error {
+	db, err := Db_open()
+	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	transaction, err := db.Begin()
 	if err != nil {
@@ -235,44 +465,4 @@ func DB_update_Elo_and_History(playerOneID int, playerTwoID int, outcome int, hi
 
 	transaction.Commit()
 	return nil
-}
-
-func DB_Get_Player(id int) (*Player, error) {
-	db, err := Db_open()
-	if err != nil {
-		return nil, err
-	}
-
-	row := db.QueryRow("SELECT * FROM Players WHERE ID = ?", id)
-
-	db_player := DB_Player{}
-	err = row.Scan(&db_player.ID, &db_player.Name, &db_player.SecretToken, &db_player.CurrentElo)
-	if err != nil {
-		return nil, err
-	}
-
-	// reconstruct game history
-	history := []HistoryEntry{}
-	historyResults, err := db.Query("SELECT GameID, Win, Draw, Loss, Elo FROM History WHERE PlayerID = ?", id)
-	if err != nil {
-		return nil, err
-	}
-	for historyResults.Next() {
-		db_history := HistoryEntry{}
-		err = historyResults.Scan(&db_history.GameID, &db_history.Win, &db_history.Draw, &db_history.Loss, &db_history.Elo)
-		if err != nil {
-			return nil, err
-		}
-		history = append(history, db_history)
-	}
-
-	player := Player{
-		ID:          db_player.ID,
-		Name:        db_player.Name,
-		SecretToken: db_player.SecretToken,
-		CurrentElo:  db_player.CurrentElo,
-		GameHistory: history,
-	}
-	return &player, nil
-
 }

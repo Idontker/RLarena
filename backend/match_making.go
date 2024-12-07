@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,31 +19,12 @@ var (
 	mutexLfMatch    sync.Mutex
 )
 
-// func serveOpenMatchesByPlayer(w http.ResponseWriter, r *http.Request) {
-// 	token := r.PathValue("token")
-
-// 	player, err := GetPlayerByToken(token)
-// 	if err != nil {
-// 		http.Error(w, "Invalid token", http.StatusUnauthorized)
-// 		return
-// 	}
-
-// 	myGamesIds := make([]int, 0)
-// 	for _, game := range ActiveGames {
-// 		if game.Player1ID == player.ID || game.Player2ID == player.ID {
-// 			myGamesIds = append(myGamesIds, game.ID)
-// 		}
-// 	}
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(myGamesIds)
-// }
-
 func serveLookingForMatch(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 
-	player, err := GetPlayerByToken(token)
+	player, err := DB_Get_Player_by_Token(token)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		http.Error(w, "Invalid token (error:"+err.Error()+")", http.StatusUnauthorized)
 		return
 	}
 
@@ -79,7 +61,7 @@ func serveLookingForMatch(w http.ResponseWriter, r *http.Request) {
 			LookingForMatch = make([]LFGameStruct, 1)
 
 			newLfGame := LFGameStruct{
-				Player:      &player,
+				Player:      player,
 				LfGameCount: gameCount - lfGame.LfGameCount,
 			}
 			LookingForMatch = append(LookingForMatch, newLfGame)
@@ -100,18 +82,30 @@ func serveLookingForMatch(w http.ResponseWriter, r *http.Request) {
 
 		// Add game to the list of active games
 		// Create a new games
+		created := 0
+		msgs := make([]string, 0)
 		for i := 0; i < createNgames; i++ {
-			// TODO: create game with db and ignore/delete the ActiveGames slice
-			game := createGame(player, opponent)
-			ActiveGames = append(ActiveGames, game)
+			_, err := createGame(*player, opponent)
+			if err != nil {
+				msgs = append(msgs, err.Error())
+			} else {
+				created++
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(struct {
+			Created int      `json:"created"`
+			Errors  []string `json:"errors"`
+		}{
+			Created: created,
+			Errors:  msgs,
+		})
 		slog.Debug("Match found!", "playerOne", player.ID, "playerTwo", opponent.ID, "gameCount", gameCount)
-		fmt.Fprintf(w, "Match found! Player %d vs Player %d (in total %d games)", player.ID, opponent.ID, createNgames)
+
 	} else {
 		newLfGame := LFGameStruct{
-			Player:      &player,
+			Player:      player,
 			LfGameCount: gameCount,
 		}
 
@@ -129,8 +123,4 @@ func InitHttpHandler_Match_Making() {
 		serveLookingForMatch(w, r)
 	})
 
-	// http.HandleFunc("GET /match/my/{token}", func(w http.ResponseWriter, r *http.Request) {
-	// 	LogRequest(r)
-	// 	serveOpenMatchesByPlayer(w, r)
-	// })
 }

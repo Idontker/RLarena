@@ -14,7 +14,6 @@ func ServeIndex(w http.ResponseWriter, _ *http.Request) {
 
 // Serve static files with correct MIME types
 func ServeStatic(w http.ResponseWriter, r *http.Request) {
-	// TODO: allows path traversal attacks
 	filePath := r.URL.Path // Static files are located in the ./static folder
 	ext := filepath.Ext(filePath)
 

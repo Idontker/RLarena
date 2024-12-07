@@ -2,16 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"net/http"
-	"sync"
-	"time"
 )
 
-const K = 32
+const K = 32 // constant for Elo calculation
 
 type HistoryEntry struct {
 	GameID int  `json:"id"`
@@ -36,51 +32,6 @@ type Player struct {
 
 // }
 
-// TODO: remove --> DB
-var playerMutexes = make(map[int]*sync.Mutex)
-
-// TODO: remove --> DB
-func getPlayerMutex(playerID int) *sync.Mutex {
-	if _, exists := playerMutexes[playerID]; !exists {
-		playerMutexes[playerID] = &sync.Mutex{}
-	}
-	return playerMutexes[playerID]
-}
-
-// TODO: remove --> DB
-var (
-	players          = make(map[int]Player)
-	playerTokensToID = make(map[string]int)
-	playerNames      = make(map[string]bool)
-	mutex            sync.Mutex
-	nextPlayerID     = 1
-)
-
-// TODO: remove --> DB
-func GetPlayerByToken(token string) (Player, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	playerID, exists := playerTokensToID[token]
-	if !exists {
-		return Player{}, errors.New("player not found")
-	}
-	player := players[playerID]
-
-	return player, nil
-}
-
-// TODO: remove --> DB
-func generateToken() string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, 32)
-	for i := range b {
-		b[i] = letters[r.Intn(len(letters))]
-	}
-	return string(b)
-}
-
 func CalculateEloUpdate(current_elo1 int, current_elo2 int, outcome int) (bool, int, int) {
 	e1 := 1 / (1. + math.Pow(10, (float64(current_elo2)-float64(current_elo1))/400))
 	e2 := 1 / (1. + math.Pow(10, (float64(current_elo1)-float64(current_elo2))/400))
@@ -104,20 +55,13 @@ func CalculateEloUpdate(current_elo1 int, current_elo2 int, outcome int) (bool, 
 }
 
 func serveDisplayPlayers(w http.ResponseWriter, _ *http.Request) {
+	players, err := DB_Get_Players()
 
-	// TODO: use --> DB
-	mutex.Lock()
-
-	var playerList []Player
-	// TODO: use --> DB
-	for _, player := range players {
-		playerList = append(playerList, player)
+	if err != nil {
+		http.Error(w, "Error fetching players", http.StatusInternalServerError)
+		return
 	}
-
-	// TODO: use --> DB
-	mutex.Unlock()
-
-	json.NewEncoder(w).Encode(playerList)
+	json.NewEncoder(w).Encode(players)
 }
 
 func serveSignUp(w http.ResponseWriter, r *http.Request) {
@@ -126,31 +70,12 @@ func serveSignUp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Name is required", http.StatusBadRequest)
 		return
 	}
+	token, err := DB_Create_Player(name)
 
-	// TODO: remove --> DB
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	// TODO: remove --> DB
-	if _, exists := playerNames[name]; exists {
-		http.Error(w, "Name already taken", http.StatusBadRequest)
+	if err != nil {
+		http.Error(w, "Error creating player", http.StatusInternalServerError)
 		return
 	}
-
-	token := generateToken()
-	player := Player{
-		ID:          nextPlayerID,
-		Name:        name,
-		CurrentElo:  1000,
-		GameHistory: []HistoryEntry{},
-		SecretToken: token,
-	}
-
-	// TODO: remove --> DB
-	players[nextPlayerID] = player
-	playerTokensToID[token] = nextPlayerID
-	playerNames[name] = true
-	nextPlayerID++
 
 	response := map[string]string{"token": token}
 	json.NewEncoder(w).Encode(response)
@@ -163,10 +88,12 @@ func serveGetPlayerByToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: use --> DB
-	player, err := GetPlayerByToken(token)
+	player, err := DB_Get_Player_by_Token(token)
 	if err != nil {
-		http.Error(w, "Player not found", http.StatusUnauthorized)
+		msg := fmt.Sprint("Player not found (%s)", err.Error())
+		http.Error(w,
+			msg,
+			http.StatusUnauthorized)
 		return
 	}
 
