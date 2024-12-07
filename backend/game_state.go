@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 )
 
 type Turn struct {
@@ -137,7 +136,6 @@ func (g *GameState) PossibleMoves() []Turn {
 
 func (g *GameState) applyAction(action Turn) bool {
 	moves := g.PossibleMoves()
-	slog.Info("Possible moves", "moves", moves)
 
 	for _, move := range moves {
 		if move.Eq(action) {

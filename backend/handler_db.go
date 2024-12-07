@@ -46,7 +46,7 @@ func Db_open() (*sql.DB, error) {
 // ------------------------------
 
 func DB_Create_Game(player1_id int, player2_id int, rows int, cols int) (int, error) {
-	slog.Info("Create User", "player1_id", player1_id, "player2_id", player2_id)
+	slog.Debug("Create User", "player1_id", player1_id, "player2_id", player2_id)
 	db, err := Db_open()
 	if err != nil {
 		slog.Error("Error opening database during game creation", "error", err)
@@ -126,8 +126,6 @@ func reconstruct_game(db *sql.DB, db_game DB_Game) (*Game, error) {
 	// apply all turns
 	for _, turn := range history {
 		valid := state.applyAction(turn)
-		slog.Info("Reconstructing game", "turn", turn, "valid", valid)
-
 		if !valid {
 			boardState := ""
 			for _, row := range state.Board {
@@ -296,7 +294,7 @@ func generateToken() string {
 }
 
 func DB_Create_Player(name string) (string, error) {
-	slog.Info("Create User", "name", name)
+	slog.Debug("Create User", "name", name)
 	secretToken := generateToken()
 
 	db, err := Db_open()

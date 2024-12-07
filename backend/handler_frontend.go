@@ -19,7 +19,7 @@ func ServeStatic(w http.ResponseWriter, r *http.Request) {
 
 	filePath := "." + r.URL.Path // Static files are located in the ./static folder
 	ext := filepath.Ext(filePath)
-	slog.Info("Serving static file", "path", filePath, "ext", ext)
+	slog.Debug("Serving static file", "path", filePath, "ext", ext)
 
 	// Set correct Content-Type based on file extension
 	switch ext {
