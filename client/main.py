@@ -5,8 +5,8 @@ import tqdm
 from strategy import *
 from gameClient import Client
 
-TICKS = 10
-GAMES = 1  # per matching
+TICKS = 20
+GAMES = 5  # per matching
 
 DEBUG = False
 

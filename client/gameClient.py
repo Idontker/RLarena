@@ -4,12 +4,12 @@ import json
 import os
 from strategy import Strategy
 
-URL = "http://127.0.0.1:8081"
-SLEEP_TIME = 0.001
+SLEEP_TIME = 0.001  # do not stress the server tooooooo much
 
 
 class Client():
-    def __init__(self, username: str, strategy: Strategy):
+    def __init__(self, username: str, strategy: Strategy,  urlbase: str = "http://127.0.0.1:8081"):
+        self.urlbase = urlbase
         self.strategy = strategy
         self.username = username
         self.token = ""
@@ -29,7 +29,7 @@ class Client():
             return True
 
         resp = requests.get(
-            URL + "/user/signup?name={}".format(self.username))
+            self.urlbase + "/user/signup?name={}".format(self.username))
         print("Sign up response:", resp.status_code, resp.text)
 
         if resp.status_code != 200:
@@ -48,7 +48,8 @@ class Client():
     def getActiveGames(self):
         time.sleep(SLEEP_TIME)
 
-        resp = requests.get(URL + "/games/active/{}".format(self.token))
+        resp = requests.get(
+            self.urlbase + "/games/active/{}".format(self.token))
         if resp.status_code == 200:
             return resp.json()
 
@@ -67,7 +68,7 @@ class Client():
         }
 
     def printGameState(self, gameId):
-        resp = requests.get(URL + "/game/{}/state".format(gameId))
+        resp = requests.get(self.urlbase + "/game/{}/state".format(gameId))
         if resp.status_code == 200:
             game = resp.json()
             print("({})Game state: {} vs {}".format())
@@ -91,7 +92,7 @@ class Client():
         return False
 
     def getGame(self, gameId):
-        resp = requests.get(URL + "/game/{}/state".format(gameId))
+        resp = requests.get(self.urlbase + "/game/{}/state".format(gameId))
         if resp != 200:
             return resp.json()
 
@@ -116,19 +117,15 @@ class Client():
             game_state = game["game_state"]
             moveOptions = game_state["moveOptions"]
 
-            print()
-            print(gameId, moveOptions)
             selected = self.strategy.selectMove(moveOptions, game_state)
             payloads.append({
                 "gameId": gameId,
                 "action": selected
             })
 
-        print("Performing action token={} action={}".format(self.token, payloads))
         resp = requests.post(
-            URL + "/games/actions?token={}".format(self.token), json=payloads)
+            self.urlbase + "/games/actions?token={}".format(self.token), json=payloads)
         if resp.status_code == 200 or resp.status_code == 201:
-            print("Bulk action response:", resp.status_code, resp.text)
             return True
 
         print("Error during 'POST /games/actions?token={}".format(self.token),
@@ -140,7 +137,7 @@ class Client():
 
         print("Performing action token={} action={}".format(self.token, action))
         resp = requests.post(
-            URL + "/game/{}/action?token={}".format(gameId, self.token), json=action)
+            self.urlbase + "/game/{}/action?token={}".format(gameId, self.token), json=action)
         if resp.status_code == 200 or resp.status_code == 201:
 
             return True
@@ -153,7 +150,7 @@ class Client():
         time.sleep(SLEEP_TIME)
 
         resp = requests.get(
-            URL + "/match/queueup/{}?gameCount={}".format(self.token, gameCount))
+            self.urlbase + "/match/queueup/{}?gameCount={}".format(self.token, gameCount))
         if resp.status_code == 200:
             return resp.text
 

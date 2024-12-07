@@ -1,2 +1,3 @@
 *.exe
 client/.cached
+backend/app.db
