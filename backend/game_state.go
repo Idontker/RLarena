@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 )
 
 type Turn struct {
@@ -12,6 +13,10 @@ type Turn struct {
 	SourceRow int `json:"sourceRow"`
 	SourceCol int `json:"sourceCol"`
 	Player    int `json:"player"`
+}
+
+func (t Turn) String() string {
+	return fmt.Sprintf("TurnID: %d (p:%d): (%d, %d) -> (%d, %d)", t.TurnID, t.Player, t.SourceRow, t.SourceCol, t.DestRow, t.DestCol)
 }
 
 func (t *Turn) Eq(other Turn) bool {
@@ -84,6 +89,7 @@ func (g *GameState) GetWinner() int {
 func (g *GameState) PossibleMoves() []Turn {
 	np := g.NextPlayer()
 	nextMoves := make([]Turn, 0)
+	turnID := len(g.History) + 1
 
 	for col := 0; col < g.Cols; col++ {
 		for row := 0; row < g.Rows; row++ {
@@ -105,6 +111,7 @@ func (g *GameState) PossibleMoves() []Turn {
 
 					if dx != 0 && g.Board[y][x] != np && g.Board[y][x] != 0 {
 						nextMoves = append(nextMoves, Turn{
+							TurnID:    turnID,
 							DestRow:   y,
 							DestCol:   x,
 							SourceRow: row,
@@ -113,6 +120,7 @@ func (g *GameState) PossibleMoves() []Turn {
 						})
 					} else if dx == 0 && g.Board[y][x] == 0 {
 						nextMoves = append(nextMoves, Turn{
+							TurnID:    turnID,
 							DestRow:   y,
 							DestCol:   x,
 							SourceRow: row,
@@ -129,6 +137,7 @@ func (g *GameState) PossibleMoves() []Turn {
 
 func (g *GameState) applyAction(action Turn) bool {
 	moves := g.PossibleMoves()
+	slog.Info("Possible moves", "moves", moves)
 
 	for _, move := range moves {
 		if move.Eq(action) {

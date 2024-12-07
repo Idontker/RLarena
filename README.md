@@ -10,3 +10,7 @@ Create Database from migrations
 ```
 goose -dir=migrations sqlite3 app.db up
 ```
+Delete Database from migrations
+```
+goose -dir=migrations sqlite3 app.db down
+```

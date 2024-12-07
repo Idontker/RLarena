@@ -1,5 +1,7 @@
 import requests
 import time
+import json
+import os
 from strategy import Strategy
 
 URL = "http://127.0.0.1:8081"
@@ -15,13 +17,33 @@ class Client():
     def signUp(self):
         time.sleep(SLEEP_TIME)
 
-        resp = requests.get(URL + "/user/signup?name={}".format(self.username))
-        print("Sign up response:", resp.status_code, resp.text)
-        if resp.status_code == 200:
-            self.token = resp.json()["token"]
+        try:
+            with open(".cached/usertokens", "r") as f:
+                usertokens = json.load(f)
+        except FileNotFoundError:
+            usertokens = {}
+
+        if self.username in usertokens.keys():
+            self.token = usertokens[self.username]
+            print("Using cached token for", self.username, self.token)
             return True
-        print("Error during signUp:", resp.status_code, resp.text)
-        return False
+
+        resp = requests.get(
+            URL + "/user/signup?name={}".format(self.username))
+        print("Sign up response:", resp.status_code, resp.text)
+
+        if resp.status_code != 200:
+            print("Error during signUp:", resp.status_code, resp.text)
+            return False
+
+        self.token = resp.json()["token"]
+        usertokens[self.username] = self.token
+
+        # save the token
+        os.makedirs(os.path.dirname(".cached/usertokens"), exist_ok=True)
+        with open(".cached/usertokens", "w") as f:
+            json.dump(usertokens, f)
+        return True
 
     def getActiveGames(self):
         time.sleep(SLEEP_TIME)
@@ -94,15 +116,19 @@ class Client():
             game_state = game["game_state"]
             moveOptions = game_state["moveOptions"]
 
+            print()
+            print(gameId, moveOptions)
             selected = self.strategy.selectMove(moveOptions, game_state)
             payloads.append({
                 "gameId": gameId,
                 "action": selected
             })
 
+        print("Performing action token={} action={}".format(self.token, payloads))
         resp = requests.post(
             URL + "/games/actions?token={}".format(self.token), json=payloads)
         if resp.status_code == 200 or resp.status_code == 201:
+            print("Bulk action response:", resp.status_code, resp.text)
             return True
 
         print("Error during 'POST /games/actions?token={}".format(self.token),
@@ -112,9 +138,11 @@ class Client():
     def performAction(self, gameId, action):
         time.sleep(SLEEP_TIME)
 
+        print("Performing action token={} action={}".format(self.token, action))
         resp = requests.post(
             URL + "/game/{}/action?token={}".format(gameId, self.token), json=action)
         if resp.status_code == 200 or resp.status_code == 201:
+
             return True
 
         print("Error during 'POST /game/{}/action?token={}".format(gameId, self.token),

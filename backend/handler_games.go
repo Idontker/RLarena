@@ -207,6 +207,7 @@ func serveActiveGames(w http.ResponseWriter, _ *http.Request) {
 	activeGames, err := DB_Get_Active_Games()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	json.NewEncoder(w).Encode(activeGames)
 }
@@ -223,6 +224,7 @@ func serveActiveGamesUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprint("Invalid token (%s)", err.Error())
 		http.Error(w, msg, http.StatusUnauthorized)
+		return
 	}
 
 	myturn := make([]Game, 0)
@@ -231,6 +233,7 @@ func serveActiveGamesUser(w http.ResponseWriter, r *http.Request) {
 	activeGames, err := DB_Get_Active_Games_By_Player(player)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	for _, game := range activeGames {

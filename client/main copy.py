@@ -5,8 +5,8 @@ import tqdm
 from strategy import *
 from gameClient import Client
 
-TICKS = 10
-GAMES = 1  # per matching
+TICKS = 500
+GAMES = 5  # per matching
 
 DEBUG = False
 
@@ -33,8 +33,13 @@ if __name__ == "__main__":
     post = sys.argv[1] if sys.argv[1] else ""
     client1 = Client("radomMove" + post, RandomStrategy())
     client2 = Client("firstMove" + post, FirstMoveStrategy())
+    client3 = Client("farwestMove" + post, FarwestStrategy())
+    client4 = Client("alwaysTakeFirstMove" + post, AlwaysTakeFirstStrategy())
+    client5 = Client("alwaysTakeRandomMove" + post, AlwaysTakeRandomStrategy())
+    client6 = Client("AlwaysTakeFarwestStrategy" +
+                     post, AlwaysTakeFarwestStrategy())
 
-    clients = [client1, client2]
+    clients = [client1, client2, client3, client4, client5, client6]
     for c in clients:
         c.signUp()
 
