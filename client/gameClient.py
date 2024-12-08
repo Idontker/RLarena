@@ -4,6 +4,9 @@ import json
 import os
 from strategy import Strategy
 
+# had some issues with the server port not being available
+# so I added a minimal sleep time between requests
+
 SLEEP_TIME = 0.001  # do not stress the server tooooooo much
 
 
@@ -158,6 +161,6 @@ class Client():
               resp.status_code, resp.text)
         return None
 
-    def play(self, maxTime=-1, games: int = 10):
+    def play(self, maxTime=-1, concurrentGames: int = 10):
         # TODO: implement
         pass

@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  db-migration:
+    image: 'ghcr.io/idontker/rlarena:main-db-migration'
+    volumes:
+      - 'app-data:/app-data'
+    environment:
+      - DB_PATH=/app-data/app.db
+  rl-arena:
+    image: 'ghcr.io/idontker/rlarena:main-backend'
+    ports:
+      - '8081:8081'
+    environment:
+      - DB_PATH=/app-data/app.db
+    volumes:
+      - 'app-data:/app-data'
+    depends_on:
+      - db-migration
+volumes:
+  app-data: null
