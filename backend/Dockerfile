@@ -1,9 +1,10 @@
+# Build Stage
 FROM golang:1.23.4 AS build-stage
 
+RUN mkdir -p /app-data
 WORKDIR /app
-
-# COPY go.mod go.sum ./
-COPY go.mod ./
+# Prepare your Go app
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY *.go ./
@@ -11,24 +12,26 @@ COPY *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /backend
 
 
-# Run the tests in the container
-# FROM build-stage AS run-test-stage
-# RUN go test -v ./...
 
-FROM gcr.io/distroless/base-debian11 AS build-image
-RUN go install github.com/pressly/goose/v3/cmd/goose@v3.23.0
-RUN goose --version
-
-FROM build-image AS build-release-stage
+# Final Stage
+FROM gcr.io/distroless/base-debian11 AS build-release-stage
 
 WORKDIR /
-
+# Copy static files and templates
 COPY static /static
 COPY templates /templates
+
+# Copy the compiled binary
 COPY --from=build-stage /backend /backend
 
+# Ensure nonroot can access /app-data/*
+COPY --from=build-stage /app-data /app-data
+
+# Expose the application port
 EXPOSE 8081
 
-USER nonroot:nonroot
+# TODO: 
+# Run as a non-root user
+# USER nonroot:nonroot
 
 ENTRYPOINT ["/backend"]

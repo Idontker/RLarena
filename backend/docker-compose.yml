@@ -1,7 +1,16 @@
 version: '3.8'
 
+
+
 services:
-  go-app:
+  db-migration:
+    build:
+      context: .
+      dockerfile: Dockerfile.db.migration
+    volumes:
+      - app-data:/app-data
+
+  rl-arena:
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,9 +20,7 @@ services:
       - DB_PATH=/app-data/app.db
     volumes:
       - app-data:/app-data
-    command: >
-      sh -c "goose -dir=migrations sqlite3 /app-data/app.db up &&
-             /backend"
-
+    depends_on:
+      - db-migration
 volumes:
   app-data:

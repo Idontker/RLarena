@@ -1,0 +1,11 @@
+
+# DB Migration Stage
+FROM golang:1.23.4 AS db-migration-stage
+
+WORKDIR /
+# Install goose in the build stage
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.23.0
+COPY migrations ./migrations
+
+RUN mkdir -p /app-data
+RUN goose -dir=migrations sqlite3 /app-data/app.db up
