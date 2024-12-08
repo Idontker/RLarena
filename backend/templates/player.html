@@ -5,8 +5,21 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Player Details</title>
         <link rel="stylesheet" href="/static/player.css" />
+        <link rel="stylesheet" href="/static/nav.css" />
     </head>
     <body>
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <a href="/" class="navbar-brand">RL Arena</a>
+                <ul class="navbar-links">
+                    <li><a href="/game?id=1">Game Inspector</a></li>
+                    <li><a href="/games">All Games</a></li>
+                    <li><a href="/leaderboard">Leaderboard</a></li>
+                </ul>
+            </div>
+        </nav>
+
         <div class="container">
             <h1>Player Details</h1>
             <div id="player-info">

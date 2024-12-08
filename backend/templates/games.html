@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Game Overview</title>
+        <link rel="stylesheet" href="/static/games.css" />
+        <link rel="stylesheet" href="/static/nav.css" />
+    </head>
+    <body>
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <a href="/" class="navbar-brand">RL Arena</a>
+                <ul class="navbar-links">
+                    <li><a href="/game?id=1">Game Inspector</a></li>
+                    <li><a href="/games">All Games</a></li>
+                    <li><a href="/leaderboard">Leaderboard</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="container">
+            <h1>Game Overview</h1>
+            <table id="gameTable">
+                <thead>
+                    <tr>
+                        <th>Game ID</th>
+                        <th>Player 1 ID</th>
+                        <th>Player 2 ID</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be inserted dynamically by JavaScript -->
+                </tbody>
+            </table>
+            <div class="pagination">
+                <button id="prevPage" onclick="prevPage()">Previous</button>
+                <button id="nextPage" onclick="nextPage()">Next</button>
+            </div>
+        </div>
+        <script>
+            function getCurrentPageNumber() {
+                const params = new URLSearchParams(window.location.search);
+                const page = params.get("page");
+                const pageNumber = Number(page);
+
+                let currentPage =
+                    pageNumber && !isNaN(pageNumber) ? pageNumber : 1;
+                return currentPage;
+            }
+            // TODO: missing "hasNext" and "hasPrev" variants
+            function prevPage() {
+                let currentPage = getCurrentPageNumber();
+                if (currentPage > 1) {
+                    currentPage--;
+                    window.location.href = `/games?page=${currentPage}`;
+                }
+            }
+
+            function nextPage() {
+                let currentPage = getCurrentPageNumber();
+                currentPage++;
+                window.location.href = `/games?page=${currentPage}`;
+            }
+        </script>
+        <script src="/static/games.js"></script>
+    </body>
+</html>

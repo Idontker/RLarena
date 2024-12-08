@@ -188,7 +188,7 @@ func DB_Get_Games(startIdx int, endIdx int) ([]Game, error) {
 	defer db.Close()
 
 	// load game data
-	rows, err := db.Query("SELECT * FROM Game WHERE ID >= ? AND ID <", startIdx, endIdx)
+	rows, err := db.Query("SELECT * FROM Game WHERE ID >= ? AND ID < ?", startIdx, endIdx)
 	if err != nil {
 		slog.Error("Error querying game by id", "startIdx", startIdx, "endIdx", endIdx, "error", err)
 		return nil, err

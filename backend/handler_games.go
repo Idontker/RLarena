@@ -278,9 +278,9 @@ func serveActiveGamesUser(w http.ResponseWriter, r *http.Request) {
 
 func InitHttpHandler_Game_Handler() {
 
-	http.HandleFunc("GET /games", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /games/all", func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r)
-		serveGameState(w, r)
+		serveGames(w, r)
 	})
 
 	http.HandleFunc("GET /game/{id}/state", func(w http.ResponseWriter, r *http.Request) {

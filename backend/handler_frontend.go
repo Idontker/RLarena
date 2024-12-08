@@ -45,6 +45,11 @@ func InitHttpHandler_Frontend_Handler() {
 		http.ServeFile(w, r, "./templates/game.html")
 	})
 
+	http.HandleFunc("GET /games", func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r)
+		http.ServeFile(w, r, "./templates/games.html")
+	})
+
 	http.HandleFunc("GET /leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r)
 		http.ServeFile(w, r, "./templates/leaderboard.html")

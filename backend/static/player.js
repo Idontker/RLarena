@@ -22,7 +22,7 @@ const renderTable = (player) => {
             const row = `
                 <tr>
                     <td>
-                        <a href="/?id=${game.id}">
+                        <a href="/game?id=${game.id}">
                             <span class="info-icon" title="More info about game ${game.id}">ℹ️</span>
                             ${game.id}
                         </a>
