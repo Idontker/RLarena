@@ -4,29 +4,12 @@ import sys
 import tqdm
 from strategy import *
 from gameClient import Client
+from strategy_examples import *
 
-TICKS = 20
-GAMES = 5  # per matching
+TICKS = 100
+GAMES = 50  # per matching
 
 DEBUG = False
-
-
-def moveToString(move):
-    return "{}.{} - {}.{}".format(
-        move["sourceRow"],
-        move["sourceCol"],
-        move["destRow"],
-        move["destCol"],
-    )
-
-
-def movesToString(moves):
-    return ", ".join(map(lambda move: "{}.{} - {}.{}".format(
-        move["sourceRow"],
-        move["sourceCol"],
-        move["destRow"],
-        move["destCol"],
-    ), moves))
 
 
 if __name__ == "__main__":
