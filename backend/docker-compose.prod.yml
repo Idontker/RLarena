@@ -6,6 +6,8 @@ services:
       - 'app-data:/app-data'
     environment:
       - DB_PATH=/app-data/app.db
+    restart: 'no'  # Ensure it does not restart after completing the task
+
   rl-arena:
     image: 'ghcr.io/idontker/rlarena:main-backend'
     ports:
