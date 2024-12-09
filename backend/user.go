@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/http"
 )
@@ -75,6 +76,11 @@ func serveSignUp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Error creating player", http.StatusInternalServerError)
 		return
+	}
+
+	err = ensureGamesAreRunning()
+	if err != nil {
+		slog.Error("Error ensuring games are running", "error", err)
 	}
 
 	response := map[string]string{"token": token}

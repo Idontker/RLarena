@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const GAME_LIMIT_PER_PAIR int = 10
+
 type DB_Game struct {
 	ID        int
 	Player1ID int
@@ -54,7 +56,7 @@ func Db_open() (*sql.DB, error) {
 // ------------------------------
 
 func DB_Create_Game(player1_id int, player2_id int, rows int, cols int) (int, error) {
-	slog.Debug("Create User", "player1_id", player1_id, "player2_id", player2_id)
+	slog.Debug("Create Game", "player1_id", player1_id, "player2_id", player2_id)
 	db, err := Db_open()
 	if err != nil {
 		slog.Error("Error opening database during game creation", "error", err)
@@ -543,4 +545,127 @@ func DB_update_Elo_and_History(playerOneID int, playerTwoID int, outcome int, hi
 
 	transaction.Commit()
 	return nil
+}
+
+//  ------------------------------
+// Match Finder
+//  ------------------------------
+
+func ensureGamesAreRunning() error {
+	// Begin transaction
+	db, err := Db_open()
+	if err != nil {
+		slog.Error("Error opening database (ensure actives games)", "error", err)
+		return err
+	}
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		slog.Error("Error starting transaction (ensure actives games)", "error", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check existing games
+	rows, err := tx.Query(`
+SELECT
+    pairing.p1,
+    pairing.p2,
+    COALESCE(COUNT(DISTINCT g.ID), 0) as active
+FROM
+    (
+        SELECT
+            player1.id as p1,
+            player2.id as p2
+        FROM
+            Player player1
+            JOIN Player player2 ON player1.id < player2.id
+    ) pairing
+    LEFT JOIN Game g ON g.Outcome = 0
+    AND (
+        (
+            g.Player1ID = pairing.p1
+            AND g.Player2ID = pairing.p2
+        )
+        OR (
+            g.Player1ID = pairing.p2
+            AND g.Player2ID = pairing.p1
+        )
+    )
+`)
+
+	// rows, err := tx.Query("SELECT pairing, COUNT(*) as active_games FROM games WHERE status = 'running' GROUP BY pairing")
+	if err != nil {
+		slog.Error("Error during query (ensure actives games)", "error", err)
+		return err
+	}
+	// TODO: defer rows.Close() for all rows
+	defer rows.Close()
+
+	type Pairing struct {
+		p1    int
+		p2    int
+		count int
+	}
+
+	pairings := make([]Pairing, 0)
+	for rows.Next() {
+		var pairing Pairing = Pairing{}
+
+		if err := rows.Scan(&pairing.p1, &pairing.p2, &pairing.count); err != nil {
+			slog.Error("Error scanning row (ensure actives games)", "error", err)
+			continue
+		}
+		pairings = append(pairings, pairing)
+	}
+
+	slog.Info("Recurring job, current number of parings", "parings", len(pairings))
+
+	// Create new games if needed
+	for _, pairing := range pairings {
+		if pairing.count >= GAME_LIMIT_PER_PAIR {
+			continue
+		}
+		slog.Info("Pairing", "p1", pairing.p1, "p2", pairing.p2, "count", pairing.count)
+
+		for i := 0; i < GAME_LIMIT_PER_PAIR-pairing.count; i++ {
+			slog.Info("creating game", "i", i, "p1", pairing.p1, "p2", pairing.p2, "count", pairing.count)
+			var rows, cols int
+			switch rand.Intn(4) {
+			case 0:
+				rows, cols = 3, 3
+			case 1:
+				rows, cols = 5, 3
+			case 2:
+				rows, cols = 8, 8
+			case 3:
+				rows, cols = 16, 16
+			}
+
+			var id1, id2 int
+			switch rand.Intn(2) {
+			case 0:
+				id1, id2 = pairing.p1, pairing.p2
+			case 1:
+				id2, id1 = pairing.p1, pairing.p2
+			}
+
+			slog.Debug("(ensure active games) Create Game", "i", i, "player1_id", id1, "player2_id", id2, "rows", rows, "cols", cols)
+
+			_, err := tx.Exec("INSERT INTO Game (Player1ID, Player2ID, Outcome, Rows, Cols) VALUES (?, ?, ?, ?, ?)",
+				id1,
+				id2,
+				0,
+				rows,
+				cols)
+
+			if err != nil {
+				slog.Error("Error inserting new game to db", "error", err)
+			}
+		}
+	}
+
+	// Commit transaction
+	return tx.Commit()
 }

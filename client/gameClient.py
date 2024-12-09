@@ -3,11 +3,13 @@ import time
 import json
 import os
 from strategy import Strategy
+from datetime import datetime
 
 # had some issues with the server port not being available
 # so I added a minimal sleep time between requests
 
 SLEEP_TIME = 0.001  # do not stress the server tooooooo much
+AWAIT_NEW_GAMES = 5  # seconds
 
 
 class Client():
@@ -149,18 +151,29 @@ class Client():
               resp.status_code, resp.text)
         return False
 
-    def lookForGame(self, gameCount=1):
-        time.sleep(SLEEP_TIME)
+    def play(self, maxTimeSeconds=60):
+        if self.token == "":
+            print("No token available. Call signup first.")
+            return False
 
-        resp = requests.get(
-            self.urlbase + "/match/queueup/{}?gameCount={}".format(self.token, gameCount))
-        if resp.status_code == 200:
-            return resp.text
+        start = time.time()
+        while time.time() - start < maxTimeSeconds:
+            active_games = self.getActiveGames()
+            if active_games:
+                print(
+                    datetime.now().timestamp(),
+                    "[{} s played]".format(time.time() - start),
+                    self.username,
+                    "my turn :{} awaiting:{}".format(
+                        len(active_games["my_turn"]),
+                        len(active_games["awaiting"])
+                    ))
+                games = active_games["my_turn"]
+                success = self.actBulk(games)
+            else:
+                print("No active games found.")
+                print("will sleep for {} seconds" .format(AWAIT_NEW_GAMES))
 
-        print("Error during 'GET /match/queueup/{}:".format(self.token),
-              resp.status_code, resp.text)
-        return None
+            time.sleep(SLEEP_TIME)
 
-    def play(self, maxTime=-1, concurrentGames: int = 10):
-        # TODO: implement
-        pass
+        return True
