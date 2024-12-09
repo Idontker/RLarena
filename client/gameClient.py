@@ -9,6 +9,7 @@ from datetime import datetime
 # so I added a minimal sleep time between requests
 
 SLEEP_TIME = 0.001  # do not stress the server tooooooo much
+SHORT_AWAIT_NEW_GAMES = 0.5  # seconds
 AWAIT_NEW_GAMES = 5  # seconds
 
 
@@ -151,6 +152,14 @@ class Client():
               resp.status_code, resp.text)
         return False
 
+    def __log(self, start, message):
+        print(
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "[{} s played]".format(time.time() - start),
+            self.username,
+            message
+        )
+
     def play(self, maxTimeSeconds=60):
         if self.token == "":
             print("No token available. Call signup first.")
@@ -160,19 +169,27 @@ class Client():
         while time.time() - start < maxTimeSeconds:
             active_games = self.getActiveGames()
             if active_games:
-                print(
-                    datetime.now().timestamp(),
-                    "[{} s played]".format(time.time() - start),
-                    self.username,
-                    "my turn :{} awaiting:{}".format(
-                        len(active_games["my_turn"]),
-                        len(active_games["awaiting"])
-                    ))
+                self.__log(start,
+                           "my turn :{} awaiting:{}".format(
+                               len(active_games["my_turn"]),
+                               len(active_games["awaiting"])
+                           ))
                 games = active_games["my_turn"]
-                success = self.actBulk(games)
+
+                if len(games) == 0:
+                    self.__log(start,
+                               f"No new active games found. Will sleep for {AWAIT_NEW_GAMES}"
+                               )
+                    time.sleep(AWAIT_NEW_GAMES)
+
+                self.actBulk(games)
+                # give time for others to play
+                time.sleep(SHORT_AWAIT_NEW_GAMES)
             else:
-                print("No active games found.")
-                print("will sleep for {} seconds" .format(AWAIT_NEW_GAMES))
+                self.__log(start,
+                           f"No new active games found. Will sleep for {AWAIT_NEW_GAMES}"
+                           )
+                time.sleep(AWAIT_NEW_GAMES)
 
             time.sleep(SLEEP_TIME)
 

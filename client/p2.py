@@ -6,7 +6,7 @@ from strategy_examples import FirstMoveStrategy
 # client = Client("radomMove", FirstMoveStrategy(),urlbase=URLBASE)
 
 
-client = Client("radomMove", FirstMoveStrategy())
+client = Client("firstMove", FirstMoveStrategy())
 
 # After sign up the user will receive a token.
 # This token will be used to authenticate the user / client.
