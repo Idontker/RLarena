@@ -40,8 +40,8 @@ func main() {
 }
 
 func runPeriodicJob() {
-	ticker := time.NewTicker(1 * time.Minute) // Run every minute
-	// ticker := time.NewTicker(30 * time.Second) // Run every 30s
+	// ticker := time.NewTicker(1 * time.Minute)  // Run every minute
+	ticker := time.NewTicker(10 * time.Second) // Run every 30s
 	defer ticker.Stop()
 
 	for {

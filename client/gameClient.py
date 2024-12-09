@@ -12,6 +12,8 @@ SLEEP_TIME = 0.001  # do not stress the server tooooooo much
 SHORT_AWAIT_NEW_GAMES = 0.5  # seconds
 AWAIT_NEW_GAMES = 5  # seconds
 
+PATH_TO_USERTOKEN_FILE = "./usertokens"
+
 
 class Client():
     def __init__(self, username: str, strategy: Strategy,  urlbase: str = "http://127.0.0.1:8081"):
@@ -24,7 +26,7 @@ class Client():
         time.sleep(SLEEP_TIME)
 
         try:
-            with open(".cached/usertokens", "r") as f:
+            with open(PATH_TO_USERTOKEN_FILE, "r") as f:
                 usertokens = json.load(f)
         except FileNotFoundError:
             usertokens = {}
@@ -46,8 +48,8 @@ class Client():
         usertokens[self.username] = self.token
 
         # save the token
-        os.makedirs(os.path.dirname(".cached/usertokens"), exist_ok=True)
-        with open(".cached/usertokens", "w") as f:
+        os.makedirs(os.path.dirname(PATH_TO_USERTOKEN_FILE), exist_ok=True)
+        with open(PATH_TO_USERTOKEN_FILE, "w") as f:
             json.dump(usertokens, f)
         return True
 
@@ -155,7 +157,7 @@ class Client():
     def __log(self, start, message):
         print(
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "[{} s played]".format(time.time() - start),
+            "[{:.2f} s played]".format(time.time() - start),
             self.username,
             message
         )
@@ -170,7 +172,7 @@ class Client():
             active_games = self.getActiveGames()
             if active_games:
                 self.__log(start,
-                           "my turn :{} awaiting:{}".format(
+                           "GAMES FOUND My turn :{} awaiting:{}".format(
                                len(active_games["my_turn"]),
                                len(active_games["awaiting"])
                            ))
@@ -178,13 +180,13 @@ class Client():
 
                 if len(games) == 0:
                     self.__log(start,
-                               f"No new active games found. Will sleep for {AWAIT_NEW_GAMES}"
+                               f"No new active games found. sleep {SHORT_AWAIT_NEW_GAMES} seconds"
                                )
-                    time.sleep(AWAIT_NEW_GAMES)
-
-                self.actBulk(games)
-                # give time for others to play
-                time.sleep(SHORT_AWAIT_NEW_GAMES)
+                    time.sleep(SHORT_AWAIT_NEW_GAMES)
+                else : 
+                    self.actBulk(games)
+                    # give time for others to play
+                    time.sleep(SHORT_AWAIT_NEW_GAMES)
             else:
                 self.__log(start,
                            f"No new active games found. Will sleep for {AWAIT_NEW_GAMES}"

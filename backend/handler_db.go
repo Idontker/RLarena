@@ -582,8 +582,7 @@ FROM
             Player player1
             JOIN Player player2 ON player1.id < player2.id
     ) pairing
-    LEFT JOIN Game g ON g.Outcome = 0
-    AND (
+    LEFT JOIN Game g ON g.Outcome = 0 AND (
         (
             g.Player1ID = pairing.p1
             AND g.Player2ID = pairing.p2
@@ -593,6 +592,7 @@ FROM
             AND g.Player2ID = pairing.p1
         )
     )
+GROUP BY pairing.p1, pairing.p2
 `)
 
 	// rows, err := tx.Query("SELECT pairing, COUNT(*) as active_games FROM games WHERE status = 'running' GROUP BY pairing")
