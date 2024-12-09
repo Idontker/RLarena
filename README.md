@@ -1,9 +1,20 @@
 # RL Arena
-![image | width=30%](https://github.com/user-attachments/assets/44f12e8e-049d-4ec4-b0f6-74b4ed170ec7)
-
+<p align="center">
+    <img src="https://github.com/user-attachments/assets/44f12e8e-049d-4ec4-b0f6-74b4ed170ec7" width="650" />
+</p>
 This project contains a pawn-chess (dt. "Bauernschach") server for learning RL (reinforcement learning) and competing against other and their bots.
-It is live 🥳🥳🚀
-https://rlarena.akbakas.de/game?id=2
+
+**It is live
+https://rlarena.akbakas.de/game?id=2**  🥳🥳🚀
+
+## Overview
+- [How to play](https://github.com/Idontker/RLarena?tab=readme-ov-file#how-to-play)
+  - [Requirments 📚](https://github.com/Idontker/RLarena?tab=readme-ov-file#requirments-)
+  - [Setup 🚀](https://github.com/Idontker/RLarena?tab=readme-ov-file#setup-)
+  - [Start your first Bot 🤖](https://github.com/Idontker/RLarena?tab=readme-ov-file#start-your-first-bot)
+  - [Runing your bot 🚀🤖](https://github.com/Idontker/RLarena?tab=readme-ov-file#runing-your-bot)
+- [Game Server](https://github.com/Idontker/RLarena?tab=readme-ov-file#game-server)
+
 ## How to play (Step by Step Guide)
 Hi there, this is a detailed step-by-step guide on how to create your own pawn-chess bot and play. If the description is too easy / slow, feel free to only read the code segments. They might be self explanatory.
 ### Requirments 📚
